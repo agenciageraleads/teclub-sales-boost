@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { LeadCard } from '@/components/LeadCard';
 import { LeadStatusModal } from '@/components/LeadStatusModal';
+import { ImportLeadsModal } from '@/components/ImportLeadsModal';
 import { Lead, LeadStatus, Profile } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, Plus } from 'lucide-react';
+import { Search, Plus, Upload } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ export default function LeadsManagement() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const fetchData = async () => {
@@ -131,10 +133,16 @@ export default function LeadsManagement() {
               {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Lead
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportModalOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              Importar CSV
+            </Button>
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Novo Lead
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -244,6 +252,13 @@ export default function LeadsManagement() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImportLeadsModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        vendedores={vendedores}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }
