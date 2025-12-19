@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { LeadCard } from '@/components/LeadCard';
-import { LeadStatusModal } from '@/components/LeadStatusModal';
+import { KanbanBoard } from '@/components/KanbanBoard';
 import { ImportLeadsModal } from '@/components/ImportLeadsModal';
 import { Lead, LeadStatus, Profile } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,17 +26,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-const statusOptions: (LeadStatus | 'Todos')[] = ['Todos', 'Novo', 'Em Atendimento', 'Ganho', 'Perdido'];
-
 export default function LeadsManagement() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [vendedores, setVendedores] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'Todos'>('Todos');
   const [vendedorFilter, setVendedorFilter] = useState<string>('all');
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -80,15 +74,9 @@ export default function LeadsManagement() {
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.nome.toLowerCase().includes(search.toLowerCase()) ||
                           lead.contato.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'Todos' || lead.status === statusFilter;
     const matchesVendedor = vendedorFilter === 'all' || lead.vendedor_id === vendedorFilter;
-    return matchesSearch && matchesStatus && matchesVendedor;
+    return matchesSearch && matchesVendedor;
   });
-
-  const handleEditLead = (lead: Lead) => {
-    setSelectedLead(lead);
-    setModalOpen(true);
-  };
 
   const handleCreateLead = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -156,18 +144,6 @@ export default function LeadsManagement() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as LeadStatus | 'Todos')}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Vendedor" />
@@ -183,32 +159,17 @@ export default function LeadsManagement() {
           </Select>
         </div>
 
-        {/* Leads Grid */}
+        {/* Kanban Board */}
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-96 rounded-lg" />
             ))}
-          </div>
-        ) : filteredLeads.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhum lead encontrado</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} onEdit={handleEditLead} />
-            ))}
-          </div>
+          <KanbanBoard leads={filteredLeads} onUpdate={fetchData} />
         )}
       </main>
-
-      <LeadStatusModal
-        lead={selectedLead}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSuccess={fetchData}
-      />
 
       {/* Create Lead Modal */}
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
