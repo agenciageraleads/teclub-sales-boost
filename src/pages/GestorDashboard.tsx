@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { KPICard } from '@/components/KPICard';
 import { FunnelChart } from '@/components/FunnelChart';
+import { LostLeadsPanel } from '@/components/LostLeadsPanel';
 import { UserManagement } from '@/components/UserManagement';
 import { Lead, Profile } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
@@ -132,9 +133,9 @@ export default function GestorDashboard() {
               />
             </div>
 
-            {/* Funnel Chart */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card>
+            {/* Funnel + Lost Leads */}
+            <div className="grid gap-6 lg:grid-cols-3 mb-8">
+              <Card className="lg:col-span-2">
                 <CardHeader>
                   <CardTitle className="text-lg">Pipeline de Vendas</CardTitle>
                 </CardHeader>
@@ -143,9 +144,11 @@ export default function GestorDashboard() {
                 </CardContent>
               </Card>
 
-              {/* User Management */}
-              <UserManagement />
+              <LostLeadsPanel leads={filteredLeads} />
             </div>
+
+            {/* User Management */}
+            <UserManagement />
           </>
         )}
       </main>
