@@ -3,7 +3,7 @@ import { Lead, LeadStatus } from '@/types/database';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Phone, DollarSign, Calendar, Check, X, Send } from 'lucide-react';
+import { Phone, DollarSign, Calendar, Check, X, Send, Ban, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +15,8 @@ import { MotivoModal } from './MotivoModal';
 interface KanbanCardProps {
   lead: Lead;
   onUpdate: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
+  onLeadClick?: () => void;
 }
 
 const statusConfig: Record<LeadStatus, { label: string; class: string }> = {
@@ -24,7 +26,7 @@ const statusConfig: Record<LeadStatus, { label: string; class: string }> = {
   'Perdido': { label: 'Perdido', class: 'status-perdido' },
 };
 
-export function KanbanCard({ lead, onUpdate }: KanbanCardProps) {
+export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanCardProps) {
   const [orcamentoOpen, setOrcamentoOpen] = useState(false);
   const [motivoOpen, setMotivoOpen] = useState(false);
   const [ganhoModalOpen, setGanhoModalOpen] = useState(false);
@@ -73,29 +75,59 @@ export function KanbanCard({ lead, onUpdate }: KanbanCardProps) {
     onUpdate();
   };
 
+  const handleDesqualificar = async () => {
+    const { error } = await supabase
+      .from('leads')
+      .update({ status: 'Perdido' as LeadStatus, motivo_perda: 'Desqualificado' })
+      .eq('id', lead.id);
+
+    if (error) {
+      toast.error('Erro ao desqualificar lead');
+      return;
+    }
+    toast.success('Lead desqualificado');
+    onUpdate();
+  };
+
   const isNovo = lead.status === 'Novo';
   const isEmAtendimento = lead.status === 'Em Atendimento';
   const isFinalizado = lead.status === 'Ganho' || lead.status === 'Perdido';
 
   return (
     <>
-      <Card className={cn(
-        'animate-fade-in hover:shadow-lg transition-all duration-300 border-border/50',
-        lead.status === 'Ganho' && 'border-l-4 border-l-emerald-500',
-        lead.status === 'Perdido' && 'border-l-4 border-l-red-500'
-      )}>
+      <Card 
+        className={cn(
+          'animate-fade-in hover:shadow-lg transition-all duration-300 border-border/50 cursor-grab active:cursor-grabbing',
+          lead.status === 'Ganho' && 'border-l-4 border-l-emerald-500',
+          lead.status === 'Perdido' && 'border-l-4 border-l-red-500'
+        )}
+        draggable
+        onDragStart={onDragStart}
+      >
         <CardContent className="p-3">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-foreground text-sm truncate flex-1">{lead.nome}</h3>
+            <h3 
+              className="font-semibold text-foreground text-sm truncate flex-1 cursor-pointer hover:text-primary transition-colors"
+              onClick={onLeadClick}
+            >
+              {lead.nome}
+            </h3>
             <Badge variant="outline" className={cn('shrink-0 border text-xs', status.class)}>
               {status.label}
             </Badge>
           </div>
 
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-3">
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-2">
             <Phone className="w-3 h-3" />
             <span className="truncate">{lead.contato}</span>
           </div>
+
+          {lead.demanda && (
+            <div className="flex items-start gap-1.5 text-muted-foreground text-xs mb-2">
+              <FileText className="w-3 h-3 mt-0.5 shrink-0" />
+              <span className="line-clamp-2">{lead.demanda}</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
             {lead.valor_fechamento && (
@@ -114,17 +146,27 @@ export function KanbanCard({ lead, onUpdate }: KanbanCardProps) {
 
           {/* Quick Actions */}
           {!isFinalizado && (
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2 flex-wrap">
               {isNovo && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-xs h-8 gap-1 hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => setOrcamentoOpen(true)}
-                >
-                  <Send className="w-3 h-3" />
-                  Orçamento
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs h-8 gap-1 hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setOrcamentoOpen(true)}
+                  >
+                    <Send className="w-3 h-3" />
+                    Orçamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8 gap-1 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                    onClick={handleDesqualificar}
+                  >
+                    <Ban className="w-3 h-3" />
+                  </Button>
+                </>
               )}
               {isEmAtendimento && (
                 <>

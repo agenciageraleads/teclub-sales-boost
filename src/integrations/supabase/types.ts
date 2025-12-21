@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           contato: string
           created_at: string
+          demanda: string | null
           id: string
           motivo_perda: string | null
           nome: string
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           contato: string
           created_at?: string
+          demanda?: string | null
           id?: string
           motivo_perda?: string | null
           nome: string
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           contato?: string
           created_at?: string
+          demanda?: string | null
           id?: string
           motivo_perda?: string | null
           nome?: string
