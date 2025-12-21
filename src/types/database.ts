@@ -23,6 +23,7 @@ export interface Lead {
   valor_fechamento: number | null;
   motivo_perda: string | null;
   vendedor_id: string | null;
+  demanda: string | null;
   created_at: string;
   updated_at: string;
   // Joined data
