@@ -3,7 +3,7 @@ import { Lead, LeadStatus } from '@/types/database';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Phone, DollarSign, Calendar, Check, X, Send, Ban, FileText } from 'lucide-react';
+import { Phone, DollarSign, Calendar, Check, X, Send, Ban, FileText, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -129,7 +129,7 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             </div>
           )}
 
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3 flex-wrap">
             {lead.valor_fechamento && (
               <div className="flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-emerald-500" />
@@ -142,6 +142,12 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
               <Calendar className="w-3 h-3" />
               <span>{format(new Date(lead.created_at), 'dd MMM', { locale: ptBR })}</span>
             </div>
+            {lead.origem && (
+              <div className="flex items-center gap-1">
+                <Tag className="w-3 h-3" />
+                <span>{lead.origem}</span>
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}

@@ -24,6 +24,7 @@ export interface Lead {
   motivo_perda: string | null;
   vendedor_id: string | null;
   demanda: string | null;
+  origem: string | null;
   created_at: string;
   updated_at: string;
   // Joined data

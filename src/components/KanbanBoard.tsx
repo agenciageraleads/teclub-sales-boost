@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Lead, LeadStatus } from '@/types/database';
 import { KanbanCard } from './KanbanCard';
 import { LeadDetailModal } from './LeadDetailModal';
+import { OrcamentoModal } from './OrcamentoModal';
 import { cn } from '@/lib/utils';
 import { Users, Clock, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +58,8 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [orcamentoModalOpen, setOrcamentoModalOpen] = useState(false);
+  const [pendingDragLead, setPendingDragLead] = useState<Lead | null>(null);
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
@@ -84,6 +87,13 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
     if (column.id === 'novo') {
       newStatus = 'Novo';
     } else if (column.id === 'em-atendimento') {
+      // If dragging from Novo to Em Atendimento, open modal to insert value
+      if (draggedLead.status === 'Novo') {
+        setPendingDragLead(draggedLead);
+        setOrcamentoModalOpen(true);
+        setDraggedLead(null);
+        return;
+      }
       newStatus = 'Em Atendimento';
     } else {
       // For finalizado, keep current status if already finalized, otherwise don't allow drop
@@ -114,6 +124,23 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
     }
 
     setDraggedLead(null);
+  };
+
+  const handleOrcamentoConfirm = async (valor: number) => {
+    if (!pendingDragLead) return;
+
+    const { error } = await supabase
+      .from('leads')
+      .update({ valor_fechamento: valor, status: 'Em Atendimento' as LeadStatus })
+      .eq('id', pendingDragLead.id);
+
+    if (error) {
+      toast.error('Erro ao enviar orçamento');
+      return;
+    }
+    toast.success('Orçamento enviado! Lead movido para Em Atendimento');
+    setPendingDragLead(null);
+    onUpdate();
   };
 
   const handleLeadClick = (lead: Lead) => {
@@ -194,6 +221,17 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
         onUpdate={onUpdate}
+      />
+
+      <OrcamentoModal
+        open={orcamentoModalOpen}
+        onOpenChange={(open) => {
+          setOrcamentoModalOpen(open);
+          if (!open) setPendingDragLead(null);
+        }}
+        onConfirm={handleOrcamentoConfirm}
+        title="Enviar Orçamento"
+        currentValue={pendingDragLead?.valor_fechamento}
       />
     </>
   );

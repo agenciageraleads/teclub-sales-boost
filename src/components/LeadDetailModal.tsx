@@ -32,6 +32,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
   const [nome, setNome] = useState('');
   const [contato, setContato] = useState('');
   const [demanda, setDemanda] = useState('');
+  const [origem, setOrigem] = useState('');
   const [status, setStatus] = useState<LeadStatus>('Novo');
   const [valorFechamento, setValorFechamento] = useState('');
   const [motivoPerda, setMotivoPerda] = useState('');
@@ -42,6 +43,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
       setNome(lead.nome);
       setContato(lead.contato);
       setDemanda(lead.demanda || '');
+      setOrigem(lead.origem || 'Manual');
       setStatus(lead.status);
       setValorFechamento(lead.valor_fechamento?.toString() || '');
       setMotivoPerda(lead.motivo_perda || '');
@@ -58,6 +60,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
         nome,
         contato,
         demanda: demanda || null,
+        origem: origem || 'Manual',
         status,
         valor_fechamento: valorFechamento ? parseFloat(valorFechamento) : null,
         motivo_perda: status === 'Perdido' ? motivoPerda : null,
@@ -115,6 +118,25 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
               placeholder="Descreva a demanda do cliente..."
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="origem">Origem</Label>
+            <Select value={origem} onValueChange={setOrigem}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a origem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Manual">Manual</SelectItem>
+                <SelectItem value="n8n">n8n</SelectItem>
+                <SelectItem value="CSV">Importação CSV</SelectItem>
+                <SelectItem value="Site">Site</SelectItem>
+                <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                <SelectItem value="Instagram">Instagram</SelectItem>
+                <SelectItem value="Facebook">Facebook</SelectItem>
+                <SelectItem value="Indicação">Indicação</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

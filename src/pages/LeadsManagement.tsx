@@ -6,7 +6,7 @@ import { Lead, LeadStatus, Profile } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, Upload } from 'lucide-react';
+import { Search, Plus, Upload, Calendar } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -25,6 +25,9 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth } from 'date-fns';
+
+type DateFilter = 'all' | 'today' | 'week' | 'month' | '7days' | '30days';
 
 export default function LeadsManagement() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -32,6 +35,7 @@ export default function LeadsManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [vendedorFilter, setVendedorFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -71,11 +75,33 @@ export default function LeadsManagement() {
     fetchData();
   }, []);
 
+  const getDateFilterRange = (filter: DateFilter): Date | null => {
+    const now = new Date();
+    switch (filter) {
+      case 'today':
+        return startOfDay(now);
+      case 'week':
+        return startOfWeek(now, { weekStartsOn: 1 });
+      case 'month':
+        return startOfMonth(now);
+      case '7days':
+        return subDays(now, 7);
+      case '30days':
+        return subDays(now, 30);
+      default:
+        return null;
+    }
+  };
+
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.nome.toLowerCase().includes(search.toLowerCase()) ||
                           lead.contato.toLowerCase().includes(search.toLowerCase());
     const matchesVendedor = vendedorFilter === 'all' || lead.vendedor_id === vendedorFilter;
-    return matchesSearch && matchesVendedor;
+    
+    const dateRangeStart = getDateFilterRange(dateFilter);
+    const matchesDate = !dateRangeStart || new Date(lead.created_at) >= dateRangeStart;
+    
+    return matchesSearch && matchesVendedor && matchesDate;
   });
 
   const handleCreateLead = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -155,6 +181,20 @@ export default function LeadsManagement() {
                   {v.full_name || v.email}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+            <SelectTrigger className="w-full sm:w-40">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os períodos</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Esta semana</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="7days">Últimos 7 dias</SelectItem>
+              <SelectItem value="30days">Últimos 30 dias</SelectItem>
             </SelectContent>
           </Select>
         </div>
