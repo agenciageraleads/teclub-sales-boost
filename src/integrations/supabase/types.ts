@@ -22,6 +22,7 @@ export type Database = {
           id: string
           motivo_perda: string | null
           nome: string
+          origem: string | null
           status: Database["public"]["Enums"]["lead_status"]
           updated_at: string
           valor_fechamento: number | null
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           motivo_perda?: string | null
           nome: string
+          origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
           valor_fechamento?: number | null
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           motivo_perda?: string | null
           nome?: string
+          origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
           valor_fechamento?: number | null
