@@ -105,7 +105,7 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
         onDragStart={onDragStart}
       >
         <CardContent className="p-2.5">
-          {/* Header row - Name + Status */}
+          {/* Header row - Name + Status + Actions */}
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <h3 
               className="font-medium text-foreground text-sm truncate flex-1 cursor-pointer hover:text-primary transition-colors"
@@ -113,9 +113,33 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             >
               {lead.nome}
             </h3>
-            <Badge variant="outline" className={cn('shrink-0 border text-[10px] px-1.5 py-0', status.class)}>
-              {status.label}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              {isEmAtendimento && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-5 w-5 p-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
+                    onClick={() => setGanhoModalOpen(true)}
+                    title="Marcar como Ganho"
+                  >
+                    <Check className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-5 w-5 p-0 bg-red-500/10 border-red-500/30 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500"
+                    onClick={() => setMotivoOpen(true)}
+                    title="Marcar como Perdido"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </>
+              )}
+              <Badge variant="outline" className={cn('shrink-0 border text-[10px] px-1.5 py-0', status.class)}>
+                {status.label}
+              </Badge>
+            </div>
           </div>
 
           {/* Info row - Contact, Value, Date, Origin */}
@@ -152,52 +176,26 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             </div>
           )}
 
-          {/* Actions row - inline with info */}
-          {!isFinalizado && (
+          {/* Actions row - only for Novo status */}
+          {isNovo && (
             <div className="flex items-center gap-1.5 mt-1.5">
-              {isNovo && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 text-xs px-2 gap-1 hover:bg-accent hover:text-accent-foreground"
-                    onClick={() => setOrcamentoOpen(true)}
-                  >
-                    <Send className="w-3 h-3" />
-                    Orçamento
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                    onClick={handleDesqualificar}
-                  >
-                    <Ban className="w-3 h-3" />
-                  </Button>
-                </>
-              )}
-              {isEmAtendimento && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 p-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
-                    onClick={() => setGanhoModalOpen(true)}
-                    title="Marcar como Ganho"
-                  >
-                    <Check className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 p-0 bg-red-500/10 border-red-500/30 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500"
-                    onClick={() => setMotivoOpen(true)}
-                    title="Marcar como Perdido"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-xs px-2 gap-1 hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setOrcamentoOpen(true)}
+              >
+                <Send className="w-3 h-3" />
+                Orçamento
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                onClick={handleDesqualificar}
+              >
+                <Ban className="w-3 h-3" />
+              </Button>
             </div>
           )}
 
