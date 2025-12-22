@@ -97,39 +97,33 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
     <>
       <Card 
         className={cn(
-          'animate-fade-in hover:shadow-lg transition-all duration-300 border-border/50 cursor-grab active:cursor-grabbing',
+          'animate-fade-in hover:shadow-md transition-all duration-200 border-border/50 cursor-grab active:cursor-grabbing',
           lead.status === 'Ganho' && 'border-l-4 border-l-emerald-500',
           lead.status === 'Perdido' && 'border-l-4 border-l-red-500'
         )}
         draggable
         onDragStart={onDragStart}
       >
-        <CardContent className="p-3">
-          <div className="flex items-start justify-between gap-2 mb-2">
+        <CardContent className="p-2.5">
+          {/* Header row - Name + Status */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             <h3 
-              className="font-semibold text-foreground text-sm truncate flex-1 cursor-pointer hover:text-primary transition-colors"
+              className="font-medium text-foreground text-sm truncate flex-1 cursor-pointer hover:text-primary transition-colors"
               onClick={onLeadClick}
             >
               {lead.nome}
             </h3>
-            <Badge variant="outline" className={cn('shrink-0 border text-xs', status.class)}>
+            <Badge variant="outline" className={cn('shrink-0 border text-[10px] px-1.5 py-0', status.class)}>
               {status.label}
             </Badge>
           </div>
 
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-2">
-            <Phone className="w-3 h-3" />
-            <span className="truncate">{lead.contato}</span>
-          </div>
-
-          {lead.demanda && (
-            <div className="flex items-start gap-1.5 text-muted-foreground text-xs mb-2">
-              <FileText className="w-3 h-3 mt-0.5 shrink-0" />
-              <span className="line-clamp-2">{lead.demanda}</span>
+          {/* Info row - Contact, Value, Date, Origin */}
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1.5 flex-wrap">
+            <div className="flex items-center gap-1">
+              <Phone className="w-3 h-3" />
+              <span className="truncate max-w-[100px]">{lead.contato}</span>
             </div>
-          )}
-
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3 flex-wrap">
             {lead.valor_fechamento && (
               <div className="flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-emerald-500" />
@@ -140,7 +134,7 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             )}
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              <span>{format(new Date(lead.created_at), 'dd MMM', { locale: ptBR })}</span>
+              <span>{format(new Date(lead.created_at), 'dd/MM', { locale: ptBR })}</span>
             </div>
             {lead.origem && (
               <div className="flex items-center gap-1">
@@ -150,15 +144,23 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             )}
           </div>
 
-          {/* Quick Actions */}
+          {/* Demanda row (if exists) */}
+          {lead.demanda && (
+            <div className="flex items-start gap-1 text-muted-foreground text-xs mb-1.5">
+              <FileText className="w-3 h-3 mt-0.5 shrink-0" />
+              <span className="line-clamp-1">{lead.demanda}</span>
+            </div>
+          )}
+
+          {/* Actions row - inline with info */}
           {!isFinalizado && (
-            <div className="flex gap-2 mt-2 flex-wrap">
+            <div className="flex items-center gap-1.5 mt-1.5">
               {isNovo && (
                 <>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs h-8 gap-1 hover:bg-accent hover:text-accent-foreground"
+                    className="h-6 text-xs px-2 gap-1 hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setOrcamentoOpen(true)}
                   >
                     <Send className="w-3 h-3" />
@@ -167,7 +169,7 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-xs h-8 gap-1 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                    className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                     onClick={handleDesqualificar}
                   >
                     <Ban className="w-3 h-3" />
@@ -179,20 +181,20 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs h-8 gap-1 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
+                    className="h-6 w-6 p-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:border-emerald-500"
                     onClick={() => setGanhoModalOpen(true)}
+                    title="Marcar como Ganho"
                   >
                     <Check className="w-3 h-3" />
-                    Ganho
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs h-8 gap-1 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+                    className="h-6 w-6 p-0 bg-red-500/10 border-red-500/30 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500"
                     onClick={() => setMotivoOpen(true)}
+                    title="Marcar como Perdido"
                   >
                     <X className="w-3 h-3" />
-                    Perdido
                   </Button>
                 </>
               )}
@@ -200,7 +202,7 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
           )}
 
           {lead.motivo_perda && (
-            <p className="mt-2 text-xs text-muted-foreground bg-muted/50 rounded p-2 line-clamp-2">
+            <p className="mt-1.5 text-[10px] text-muted-foreground bg-muted/50 rounded px-1.5 py-1 line-clamp-1">
               {lead.motivo_perda}
             </p>
           )}
