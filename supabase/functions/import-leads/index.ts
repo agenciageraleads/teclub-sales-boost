@@ -12,6 +12,21 @@ interface LeadInput {
   status?: string;
   vendedor_id?: string;
   valor_fechamento?: number;
+  demanda?: string;
+  origem?: string;
+  motivo_perda?: string;
+}
+
+interface LeadUpdate {
+  id: string;
+  nome?: string;
+  contato?: string;
+  status?: string;
+  vendedor_id?: string;
+  valor_fechamento?: number;
+  demanda?: string;
+  origem?: string;
+  motivo_perda?: string;
 }
 
 serve(async (req) => {
@@ -33,78 +48,216 @@ serve(async (req) => {
       );
     }
 
-    // Only allow POST
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const body = await req.json();
-    console.log('Received body:', JSON.stringify(body));
-
-    // Accept single lead or array of leads
-    const leads: LeadInput[] = Array.isArray(body) ? body : [body];
-
-    // Validate required fields
-    const errors: string[] = [];
-    leads.forEach((lead, index) => {
-      if (!lead.nome || typeof lead.nome !== 'string') {
-        errors.push(`Lead ${index}: 'nome' is required and must be a string`);
-      }
-      if (!lead.contato || typeof lead.contato !== 'string') {
-        errors.push(`Lead ${index}: 'contato' is required and must be a string`);
-      }
-    });
-
-    if (errors.length > 0) {
-      console.error('Validation errors:', errors);
-      return new Response(
-        JSON.stringify({ error: 'Validation failed', details: errors }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Create Supabase client with service role (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Prepare leads for insertion
-    const leadsToInsert = leads.map(lead => ({
-      nome: lead.nome.trim(),
-      contato: lead.contato.trim(),
-      status: lead.status || 'Novo',
-      vendedor_id: lead.vendedor_id || null,
-      valor_fechamento: lead.valor_fechamento || null,
-    }));
+    const url = new URL(req.url);
+    const leadId = url.searchParams.get('id');
 
-    console.log('Inserting leads:', JSON.stringify(leadsToInsert));
+    // GET - Query leads
+    if (req.method === 'GET') {
+      let query = supabase.from('leads').select('*');
 
-    // Insert leads
-    const { data, error } = await supabase
-      .from('leads')
-      .insert(leadsToInsert)
-      .select();
+      // Filter by ID if provided
+      if (leadId) {
+        query = query.eq('id', leadId);
+      }
 
-    if (error) {
-      console.error('Database error:', error);
+      // Additional filters from query params
+      const status = url.searchParams.get('status');
+      const vendedor_id = url.searchParams.get('vendedor_id');
+      const origem = url.searchParams.get('origem');
+      const limit = url.searchParams.get('limit');
+
+      if (status) query = query.eq('status', status);
+      if (vendedor_id) query = query.eq('vendedor_id', vendedor_id);
+      if (origem) query = query.eq('origem', origem);
+      if (limit) query = query.limit(parseInt(limit));
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Database error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch leads', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Failed to insert leads', details: error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, leads: data, count: data?.length }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Successfully inserted leads:', data?.length);
+    // PUT/PATCH - Update lead
+    if (req.method === 'PUT' || req.method === 'PATCH') {
+      const body: LeadUpdate = await req.json();
+      console.log('Received update body:', JSON.stringify(body));
+
+      const updateId = leadId || body.id;
+      if (!updateId) {
+        return new Response(
+          JSON.stringify({ error: 'Lead ID is required for update' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Build update object (only include provided fields)
+      const updateData: Record<string, any> = {};
+      if (body.nome !== undefined) updateData.nome = body.nome;
+      if (body.contato !== undefined) updateData.contato = body.contato;
+      if (body.status !== undefined) updateData.status = body.status;
+      if (body.vendedor_id !== undefined) updateData.vendedor_id = body.vendedor_id;
+      if (body.valor_fechamento !== undefined) updateData.valor_fechamento = body.valor_fechamento;
+      if (body.demanda !== undefined) updateData.demanda = body.demanda;
+      if (body.origem !== undefined) updateData.origem = body.origem;
+      if (body.motivo_perda !== undefined) updateData.motivo_perda = body.motivo_perda;
+
+      if (Object.keys(updateData).length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'No fields to update' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Updating lead:', updateId, 'with data:', JSON.stringify(updateData));
+
+      const { data, error } = await supabase
+        .from('leads')
+        .update(updateData)
+        .eq('id', updateId)
+        .select();
+
+      if (error) {
+        console.error('Database error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update lead', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!data || data.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Lead not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Successfully updated lead:', data[0].id);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Lead updated successfully', lead: data[0] }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // DELETE - Delete lead
+    if (req.method === 'DELETE') {
+      const deleteId = leadId || (await req.json().catch(() => ({}))).id;
+      
+      if (!deleteId) {
+        return new Response(
+          JSON.stringify({ error: 'Lead ID is required for deletion' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', deleteId);
+
+      if (error) {
+        console.error('Database error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete lead', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Successfully deleted lead:', deleteId);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Lead deleted successfully' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // POST - Create leads
+    if (req.method === 'POST') {
+      const body = await req.json();
+      console.log('Received body:', JSON.stringify(body));
+
+      // Accept single lead or array of leads
+      const leads: LeadInput[] = Array.isArray(body) ? body : [body];
+
+      // Validate required fields
+      const errors: string[] = [];
+      leads.forEach((lead, index) => {
+        if (!lead.nome || typeof lead.nome !== 'string') {
+          errors.push(`Lead ${index}: 'nome' is required and must be a string`);
+        }
+        if (!lead.contato || typeof lead.contato !== 'string') {
+          errors.push(`Lead ${index}: 'contato' is required and must be a string`);
+        }
+      });
+
+      if (errors.length > 0) {
+        console.error('Validation errors:', errors);
+        return new Response(
+          JSON.stringify({ error: 'Validation failed', details: errors }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prepare leads for insertion
+      const leadsToInsert = leads.map(lead => ({
+        nome: lead.nome.trim(),
+        contato: lead.contato.trim(),
+        status: lead.status || 'Novo',
+        vendedor_id: lead.vendedor_id || null,
+        valor_fechamento: lead.valor_fechamento || null,
+        demanda: lead.demanda || null,
+        origem: lead.origem || null,
+        motivo_perda: lead.motivo_perda || null,
+      }));
+
+      console.log('Inserting leads:', JSON.stringify(leadsToInsert));
+
+      // Insert leads
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(leadsToInsert)
+        .select();
+
+      if (error) {
+        console.error('Database error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to insert leads', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Successfully inserted leads:', data?.length);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `${data?.length} lead(s) imported successfully`,
+          leads: data 
+        }),
+        { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `${data?.length} lead(s) imported successfully`,
-        leads: data 
-      }),
-      { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {

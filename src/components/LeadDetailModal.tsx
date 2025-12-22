@@ -17,9 +17,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 
 interface LeadDetailModalProps {
   lead: Lead | null;
@@ -37,6 +48,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
   const [valorFechamento, setValorFechamento] = useState('');
   const [motivoPerda, setMotivoPerda] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (lead) {
@@ -75,6 +87,27 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
     }
 
     toast.success('Lead atualizado com sucesso!');
+    onUpdate();
+    onOpenChange(false);
+  };
+
+  const handleDelete = async () => {
+    if (!lead) return;
+
+    setDeleting(true);
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', lead.id);
+
+    setDeleting(false);
+
+    if (error) {
+      toast.error('Erro ao excluir lead');
+      return;
+    }
+
+    toast.success('Lead excluído com sucesso!');
     onUpdate();
     onOpenChange(false);
   };
@@ -178,14 +211,44 @@ export function LeadDetailModal({ lead, open, onOpenChange, onUpdate }: LeadDeta
           )}
         </div>
 
-        <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            Salvar
-          </Button>
+        <div className="flex gap-2 justify-between">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. O lead {lead.nome} será removido permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleting}
+                >
+                  {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
