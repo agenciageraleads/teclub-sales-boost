@@ -125,8 +125,8 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
     // Encode da mensagem
     const encodedMessage = encodeURIComponent(message);
     
-    // Abrir WhatsApp Web
-    window.open(`https://web.whatsapp.com/send?phone=55${phone}&text=${encodedMessage}`, '_blank');
+    // Abrir WhatsApp via API
+    window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodedMessage}`, '_blank');
     
     toast.success('WhatsApp aberto! Último contato atualizado.');
     onUpdate();
