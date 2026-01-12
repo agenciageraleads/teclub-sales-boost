@@ -44,6 +44,16 @@ export function Header() {
                     <span className="hidden sm:inline">Leads</span>
                   </Button>
                 </Link>
+                <Link to="/marketing">
+                  <Button 
+                    variant={location.pathname === '/marketing' ? 'secondary' : 'ghost'} 
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Marketing</span>
+                  </Button>
+                </Link>
               </nav>
             )}
           </div>

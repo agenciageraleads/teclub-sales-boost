@@ -1,16 +1,22 @@
-import { useState } from 'react';
-import { Lead, LeadStatus } from '@/types/database';
+import { useState, useEffect } from 'react';
+import { Lead, LeadStatus, FollowupTemplate } from '@/types/database';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Phone, DollarSign, Calendar, Check, X, Send, Ban, FileText, Tag } from 'lucide-react';
+import { Phone, DollarSign, Calendar, Check, X, Send, Ban, FileText, Tag, MessageCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { OrcamentoModal } from './OrcamentoModal';
 import { MotivoModal } from './MotivoModal';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface KanbanCardProps {
   lead: Lead;
@@ -30,8 +36,20 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
   const [orcamentoOpen, setOrcamentoOpen] = useState(false);
   const [motivoOpen, setMotivoOpen] = useState(false);
   const [ganhoModalOpen, setGanhoModalOpen] = useState(false);
+  const [templates, setTemplates] = useState<FollowupTemplate[]>([]);
 
   const status = statusConfig[lead.status];
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data } = await supabase
+        .from('followup_templates')
+        .select('*')
+        .order('nome');
+      if (data) setTemplates(data);
+    };
+    fetchTemplates();
+  }, []);
 
   const handleEnviarOrcamento = async (valor: number) => {
     const { error } = await supabase
@@ -89,6 +107,31 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
     onUpdate();
   };
 
+  const handleFollowUp = async (template?: FollowupTemplate) => {
+    // Atualizar ultimo_contato
+    await supabase
+      .from('leads')
+      .update({ ultimo_contato: new Date().toISOString() })
+      .eq('id', lead.id);
+    
+    // Formatar número de telefone (remover caracteres não numéricos)
+    const phone = lead.contato.replace(/\D/g, '');
+    
+    // Mensagem padrão ou do template
+    let message = template 
+      ? template.mensagem.replace('{nome}', lead.nome).replace('{contato}', lead.contato)
+      : `Olá ${lead.nome}, tudo bem? Gostaria de dar continuidade ao nosso atendimento. Posso te ajudar?`;
+    
+    // Encode da mensagem
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Abrir WhatsApp Web
+    window.open(`https://web.whatsapp.com/send?phone=55${phone}&text=${encodedMessage}`, '_blank');
+    
+    toast.success('WhatsApp aberto! Último contato atualizado.');
+    onUpdate();
+  };
+
   const isNovo = lead.status === 'Novo';
   const isEmAtendimento = lead.status === 'Em Atendimento';
   const isFinalizado = lead.status === 'Ganho' || lead.status === 'Perdido';
@@ -116,6 +159,28 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
             <div className="flex items-center gap-1.5">
               {isEmAtendimento && (
                 <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-5 w-5 p-0 bg-blue-500/10 border-blue-500/30 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500"
+                        title="Enviar Follow-up"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleFollowUp()}>
+                        Mensagem Padrão
+                      </DropdownMenuItem>
+                      {templates.map((template) => (
+                        <DropdownMenuItem key={template.id} onClick={() => handleFollowUp(template)}>
+                          {template.nome}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     size="sm"
                     variant="outline"
@@ -160,6 +225,12 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
               <Calendar className="w-3 h-3" />
               <span>{format(new Date(lead.created_at), 'dd/MM', { locale: ptBR })}</span>
             </div>
+            {lead.ultimo_contato && (
+              <div className="flex items-center gap-1 text-blue-600" title="Último contato">
+                <Clock className="w-3 h-3" />
+                <span>{formatDistanceToNow(new Date(lead.ultimo_contato), { locale: ptBR, addSuffix: true })}</span>
+              </div>
+            )}
             {lead.origem && (
               <div className="flex items-center gap-1">
                 <Tag className="w-3 h-3" />

@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_messages: {
+        Row: {
+          ativo: boolean
+          campaign_id: string
+          conteudo: string
+          created_at: string
+          dias_apos_entrada: number
+          dias_apos_ultimo_followup: number | null
+          id: string
+          media_url: string | null
+          ordem: number
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean
+          campaign_id: string
+          conteudo: string
+          created_at?: string
+          dias_apos_entrada?: number
+          dias_apos_ultimo_followup?: number | null
+          id?: string
+          media_url?: string | null
+          ordem?: number
+          tipo: string
+        }
+        Update: {
+          ativo?: boolean
+          campaign_id?: string
+          conteudo?: string
+          created_at?: string
+          dias_apos_entrada?: number
+          dias_apos_ultimo_followup?: number | null
+          id?: string
+          media_url?: string | null
+          ordem?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_sends: {
+        Row: {
+          enviado_em: string
+          id: string
+          lead_id: string
+          message_id: string
+          status: string
+        }
+        Insert: {
+          enviado_em?: string
+          id?: string
+          lead_id: string
+          message_id: string
+          status?: string
+        }
+        Update: {
+          enviado_em?: string
+          id?: string
+          lead_id?: string
+          message_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sends_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_sends_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      followup_templates: {
+        Row: {
+          created_at: string
+          id: string
+          mensagem: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mensagem: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mensagem?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           contato: string
@@ -24,6 +134,7 @@ export type Database = {
           nome: string
           origem: string | null
           status: Database["public"]["Enums"]["lead_status"]
+          ultimo_contato: string | null
           updated_at: string
           valor_fechamento: number | null
           vendedor_id: string | null
@@ -37,6 +148,7 @@ export type Database = {
           nome: string
           origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          ultimo_contato?: string | null
           updated_at?: string
           valor_fechamento?: number | null
           vendedor_id?: string | null
@@ -50,9 +162,40 @@ export type Database = {
           nome?: string
           origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          ultimo_contato?: string | null
           updated_at?: string
           valor_fechamento?: number | null
           vendedor_id?: string | null
+        }
+        Relationships: []
+      }
+      marketing_campaigns: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
         }
         Relationships: []
       }
