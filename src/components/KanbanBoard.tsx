@@ -152,7 +152,20 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {columns.map((column) => {
-          const columnLeads = leads.filter(column.filter);
+          let columnLeads = leads.filter(column.filter);
+          
+          // Ordenar leads "Em Atendimento" por ultimo_contato (mais antigos primeiro)
+          if (column.id === 'em-atendimento') {
+            columnLeads = [...columnLeads].sort((a, b) => {
+              // Leads sem ultimo_contato vão primeiro (nunca contatados)
+              if (!a.ultimo_contato && !b.ultimo_contato) return 0;
+              if (!a.ultimo_contato) return -1;
+              if (!b.ultimo_contato) return 1;
+              // Ordenar por data mais antiga primeiro
+              return new Date(a.ultimo_contato).getTime() - new Date(b.ultimo_contato).getTime();
+            });
+          }
+          
           const ganhos = columnLeads.filter(l => l.status === 'Ganho').length;
           const perdidos = columnLeads.filter(l => l.status === 'Perdido').length;
           const isDragOver = dragOverColumn === column.id;

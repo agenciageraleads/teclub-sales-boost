@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import VendedorDashboard from "./pages/VendedorDashboard";
 import GestorDashboard from "./pages/GestorDashboard";
 import LeadsManagement from "./pages/LeadsManagement";
+import Marketing from "./pages/Marketing";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -62,6 +63,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["gestor"]}>
             <LeadsManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/marketing"
+        element={
+          <ProtectedRoute allowedRoles={["gestor"]}>
+            <Marketing />
           </ProtectedRoute>
         }
       />
