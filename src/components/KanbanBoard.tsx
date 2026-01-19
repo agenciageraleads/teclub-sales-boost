@@ -4,7 +4,7 @@ import { KanbanCard } from './KanbanCard';
 import { LeadDetailModal } from './LeadDetailModal';
 import { OrcamentoModal } from './OrcamentoModal';
 import { cn } from '@/lib/utils';
-import { Users, Clock, CheckCircle2 } from 'lucide-react';
+import { Users, Clock, CheckCircle2, ArrowRight, MousePointer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -21,6 +21,8 @@ interface KanbanColumn {
   bgColor: string;
   filter: (lead: Lead) => boolean;
   acceptsStatus: LeadStatus[];
+  emptyMessage: string;
+  emptyHint: string;
 }
 
 const columns: KanbanColumn[] = [
@@ -32,6 +34,8 @@ const columns: KanbanColumn[] = [
     bgColor: 'bg-blue-500/10',
     filter: (lead) => lead.status === 'Novo',
     acceptsStatus: ['Novo'],
+    emptyMessage: 'Nenhum lead novo',
+    emptyHint: 'Novos leads aparecerão aqui automaticamente',
   },
   {
     id: 'em-atendimento',
@@ -41,6 +45,8 @@ const columns: KanbanColumn[] = [
     bgColor: 'bg-amber-500/10',
     filter: (lead) => lead.status === 'Em Atendimento',
     acceptsStatus: ['Em Atendimento'],
+    emptyMessage: 'Nenhum lead em atendimento',
+    emptyHint: 'Clique em "Enviar Orçamento" nos leads novos para movê-los aqui',
   },
   {
     id: 'finalizado',
@@ -50,6 +56,8 @@ const columns: KanbanColumn[] = [
     bgColor: 'bg-emerald-500/10',
     filter: (lead) => lead.status === 'Ganho' || lead.status === 'Perdido',
     acceptsStatus: ['Ganho', 'Perdido'],
+    emptyMessage: 'Nenhum lead finalizado',
+    emptyHint: 'Leads ganhos e perdidos aparecerão aqui',
   },
 ];
 
@@ -82,12 +90,10 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
 
     if (!draggedLead) return;
 
-    // Determine new status based on column
     let newStatus: LeadStatus;
     if (column.id === 'novo') {
       newStatus = 'Novo';
     } else if (column.id === 'em-atendimento') {
-      // If dragging from Novo to Em Atendimento, open modal to insert value
       if (draggedLead.status === 'Novo') {
         setPendingDragLead(draggedLead);
         setOrcamentoModalOpen(true);
@@ -96,11 +102,10 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
       }
       newStatus = 'Em Atendimento';
     } else {
-      // For finalizado, keep current status if already finalized, otherwise don't allow drop
       if (draggedLead.status === 'Ganho' || draggedLead.status === 'Perdido') {
         newStatus = draggedLead.status;
       } else {
-        toast.error('Use os botões para marcar como Ganho ou Perdido');
+        toast.error('Use os botões GANHO ou PERDIDO no card para finalizar o lead');
         setDraggedLead(null);
         return;
       }
@@ -138,7 +143,7 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
       toast.error('Erro ao enviar orçamento');
       return;
     }
-    toast.success('Orçamento enviado! Lead movido para Em Atendimento');
+    toast.success('🎉 Orçamento enviado! Lead movido para Em Atendimento');
     setPendingDragLead(null);
     onUpdate();
   };
@@ -154,14 +159,11 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
         {columns.map((column) => {
           let columnLeads = leads.filter(column.filter);
           
-          // Ordenar leads "Em Atendimento" por ultimo_contato (mais antigos primeiro)
           if (column.id === 'em-atendimento') {
             columnLeads = [...columnLeads].sort((a, b) => {
-              // Leads sem ultimo_contato vão primeiro (nunca contatados)
               if (!a.ultimo_contato && !b.ultimo_contato) return 0;
               if (!a.ultimo_contato) return -1;
               if (!b.ultimo_contato) return 1;
-              // Ordenar por data mais antiga primeiro
               return new Date(a.ultimo_contato).getTime() - new Date(b.ultimo_contato).getTime();
             });
           }
@@ -182,21 +184,21 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
               <div className={cn('rounded-t-lg p-3 border border-b-0', column.bgColor)}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <column.icon className={cn('w-4 h-4', column.color)} />
-                    <h3 className={cn('font-semibold text-sm', column.color)}>{column.title}</h3>
+                    <column.icon className={cn('w-5 h-5', column.color)} />
+                    <h3 className={cn('font-semibold text-base', column.color)}>{column.title}</h3>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={cn(
-                      'text-xs font-medium px-2 py-0.5 rounded-full',
+                      'text-sm font-medium px-2.5 py-1 rounded-full',
                       column.bgColor,
                       column.color
                     )}>
                       {columnLeads.length}
                     </span>
                     {column.id === 'finalizado' && (
-                      <div className="flex gap-1 text-xs">
-                        <span className="text-emerald-600">✓{ganhos}</span>
-                        <span className="text-red-600">✗{perdidos}</span>
+                      <div className="flex gap-1.5 text-sm font-medium">
+                        <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">✓{ganhos}</span>
+                        <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded">✗{perdidos}</span>
                       </div>
                     )}
                   </div>
@@ -205,12 +207,27 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
 
               {/* Column Content */}
               <div className={cn(
-                'flex-1 bg-muted/30 rounded-b-lg border border-t-0 p-2 min-h-[400px] space-y-2 overflow-y-auto max-h-[600px] transition-colors',
+                'flex-1 bg-muted/30 rounded-b-lg border border-t-0 p-3 min-h-[400px] space-y-3 overflow-y-auto max-h-[600px] transition-colors',
                 isDragOver && 'bg-accent/30 border-accent'
               )}>
                 {columnLeads.length === 0 ? (
-                  <div className="flex items-center justify-center h-24 text-muted-foreground text-sm">
-                    {isDragOver ? 'Solte aqui' : 'Nenhum lead'}
+                  <div className="flex flex-col items-center justify-center h-32 text-center px-4">
+                    {isDragOver ? (
+                      <div className="flex items-center gap-2 text-accent-foreground font-medium">
+                        <MousePointer className="w-5 h-5" />
+                        Solte aqui
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground text-base font-medium mb-2">
+                          {column.emptyMessage}
+                        </p>
+                        <p className="text-muted-foreground/70 text-sm flex items-center gap-1">
+                          <ArrowRight className="w-4 h-4" />
+                          {column.emptyHint}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   columnLeads.map((lead) => (
