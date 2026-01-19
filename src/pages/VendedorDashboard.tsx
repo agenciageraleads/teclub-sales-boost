@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
-import { LeadCard } from '@/components/LeadCard';
-import { LeadStatusModal } from '@/components/LeadStatusModal';
+import { KanbanBoard } from '@/components/KanbanBoard';
 import { Lead, LeadStatus } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, Filter } from 'lucide-react';
+import { Search, Calendar } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -16,17 +14,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { startOfDay, subDays, startOfWeek, startOfMonth } from 'date-fns';
 
-const statusOptions: (LeadStatus | 'Todos')[] = ['Todos', 'Novo', 'Em Atendimento', 'Ganho', 'Perdido'];
+type DateFilter = 'all' | 'today' | 'week' | 'month' | '7days' | '30days';
 
 export default function VendedorDashboard() {
   const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'Todos'>('Todos');
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
 
   const fetchLeads = async () => {
     if (!user) return;
@@ -48,17 +45,33 @@ export default function VendedorDashboard() {
     fetchLeads();
   }, [user]);
 
+  const getDateFilterRange = (filter: DateFilter): Date | null => {
+    const now = new Date();
+    switch (filter) {
+      case 'today':
+        return startOfDay(now);
+      case 'week':
+        return startOfWeek(now, { weekStartsOn: 1 });
+      case 'month':
+        return startOfMonth(now);
+      case '7days':
+        return subDays(now, 7);
+      case '30days':
+        return subDays(now, 30);
+      default:
+        return null;
+    }
+  };
+
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.nome.toLowerCase().includes(search.toLowerCase()) ||
                           lead.contato.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'Todos' || lead.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    const dateRangeStart = getDateFilterRange(dateFilter);
+    const matchesDate = !dateRangeStart || new Date(lead.created_at) >= dateRangeStart;
+    
+    return matchesSearch && matchesDate;
   });
-
-  const handleEditLead = (lead: Lead) => {
-    setSelectedLead(lead);
-    setModalOpen(true);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -66,7 +79,7 @@ export default function VendedorDashboard() {
       
       <main className="container py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Meus Leads</h1>
+          <h1 className="text-2xl font-bold text-foreground">Minhas Oportunidades</h1>
           <p className="text-muted-foreground mt-1">
             {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
           </p>
@@ -83,47 +96,33 @@ export default function VendedorDashboard() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as LeadStatus | 'Todos')}>
-            <SelectTrigger className="w-full sm:w-48">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filtrar por status" />
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+            <SelectTrigger className="w-full sm:w-40">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              {statusOptions.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">Todos os períodos</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Esta semana</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="7days">Últimos 7 dias</SelectItem>
+              <SelectItem value="30days">Últimos 30 dias</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Leads Grid */}
+        {/* Kanban Board */}
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-96 rounded-lg" />
             ))}
-          </div>
-        ) : filteredLeads.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhum lead encontrado</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredLeads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} onEdit={handleEditLead} />
-            ))}
-          </div>
+          <KanbanBoard leads={filteredLeads} onUpdate={fetchLeads} />
         )}
       </main>
-
-      <LeadStatusModal
-        lead={selectedLead}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSuccess={fetchLeads}
-      />
     </div>
   );
 }
