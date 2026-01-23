@@ -1,5 +1,5 @@
 export type AppRole = 'vendedor' | 'gestor';
-export type LeadStatus = 'Novo' | 'Em Atendimento' | 'Ganho' | 'Perdido';
+export type LeadStatus = 'Novo' | 'Em Atendimento' | 'Orçamento Enviado' | 'Ganho' | 'Perdido';
 
 export interface Profile {
   id: string;
@@ -26,6 +26,7 @@ export interface Lead {
   demanda: string | null;
   origem: string | null;
   ultimo_contato: string | null;
+  orcamento_url: string | null;
   created_at: string;
   updated_at: string;
   // Joined data

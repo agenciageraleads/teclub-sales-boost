@@ -4,7 +4,7 @@ import { KanbanCard } from './KanbanCard';
 import { LeadDetailModal } from './LeadDetailModal';
 import { OrcamentoModal } from './OrcamentoModal';
 import { cn } from '@/lib/utils';
-import { Users, Clock, CheckCircle2 } from 'lucide-react';
+import { Users, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -41,6 +41,15 @@ const columns: KanbanColumn[] = [
     bgColor: 'bg-amber-500/10',
     filter: (lead) => lead.status === 'Em Atendimento',
     acceptsStatus: ['Em Atendimento'],
+  },
+  {
+    id: 'orcamento-enviado',
+    title: 'Orçamento Enviado',
+    icon: FileText,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-500/10',
+    filter: (lead) => lead.status === 'Orçamento Enviado',
+    acceptsStatus: ['Orçamento Enviado'],
   },
   {
     id: 'finalizado',
@@ -87,14 +96,17 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
     if (column.id === 'novo') {
       newStatus = 'Novo';
     } else if (column.id === 'em-atendimento') {
-      // If dragging from Novo to Em Atendimento, open modal to insert value
-      if (draggedLead.status === 'Novo') {
+      // Simplesmente mover para Em Atendimento
+      newStatus = 'Em Atendimento';
+    } else if (column.id === 'orcamento-enviado') {
+      // Ao mover para Orçamento Enviado, abrir modal para inserir valor
+      if (draggedLead.status === 'Novo' || draggedLead.status === 'Em Atendimento') {
         setPendingDragLead(draggedLead);
         setOrcamentoModalOpen(true);
         setDraggedLead(null);
         return;
       }
-      newStatus = 'Em Atendimento';
+      newStatus = 'Orçamento Enviado';
     } else {
       // For finalizado, keep current status if already finalized, otherwise don't allow drop
       if (draggedLead.status === 'Ganho' || draggedLead.status === 'Perdido') {
@@ -131,14 +143,14 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
 
     const { error } = await supabase
       .from('leads')
-      .update({ valor_fechamento: valor, status: 'Em Atendimento' as LeadStatus })
+      .update({ valor_fechamento: valor, status: 'Orçamento Enviado' as LeadStatus })
       .eq('id', pendingDragLead.id);
 
     if (error) {
       toast.error('Erro ao enviar orçamento');
       return;
     }
-    toast.success('Orçamento enviado! Lead movido para Em Atendimento');
+    toast.success('Orçamento enviado! Lead movido para Orçamento Enviado');
     setPendingDragLead(null);
     onUpdate();
   };
@@ -150,12 +162,12 @@ export function KanbanBoard({ leads, onUpdate }: KanbanBoardProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {columns.map((column) => {
           let columnLeads = leads.filter(column.filter);
           
-          // Ordenar leads "Em Atendimento" por ultimo_contato (mais antigos primeiro)
-          if (column.id === 'em-atendimento') {
+          // Ordenar leads "Em Atendimento" e "Orçamento Enviado" por ultimo_contato (mais antigos primeiro)
+          if (column.id === 'em-atendimento' || column.id === 'orcamento-enviado') {
             columnLeads = [...columnLeads].sort((a, b) => {
               // Leads sem ultimo_contato vão primeiro (nunca contatados)
               if (!a.ultimo_contato && !b.ultimo_contato) return 0;

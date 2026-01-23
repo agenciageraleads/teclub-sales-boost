@@ -15,6 +15,7 @@ interface LeadCardProps {
 const statusConfig: Record<LeadStatus, { label: string; class: string }> = {
   'Novo': { label: 'Novo', class: 'status-novo' },
   'Em Atendimento': { label: 'Em Atendimento', class: 'status-atendimento' },
+  'Orçamento Enviado': { label: 'Orçamento Enviado', class: 'status-orcamento' },
   'Ganho': { label: 'Ganho', class: 'status-ganho' },
   'Perdido': { label: 'Perdido', class: 'status-perdido' },
 };

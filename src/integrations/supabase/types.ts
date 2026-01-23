@@ -132,6 +132,7 @@ export type Database = {
           id: string
           motivo_perda: string | null
           nome: string
+          orcamento_url: string | null
           origem: string | null
           status: Database["public"]["Enums"]["lead_status"]
           ultimo_contato: string | null
@@ -146,6 +147,7 @@ export type Database = {
           id?: string
           motivo_perda?: string | null
           nome: string
+          orcamento_url?: string | null
           origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           ultimo_contato?: string | null
@@ -160,6 +162,7 @@ export type Database = {
           id?: string
           motivo_perda?: string | null
           nome?: string
+          orcamento_url?: string | null
           origem?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           ultimo_contato?: string | null
@@ -256,7 +259,12 @@ export type Database = {
     }
     Enums: {
       app_role: "vendedor" | "gestor"
-      lead_status: "Novo" | "Em Atendimento" | "Ganho" | "Perdido"
+      lead_status:
+        | "Novo"
+        | "Em Atendimento"
+        | "Orçamento Enviado"
+        | "Ganho"
+        | "Perdido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -385,7 +393,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["vendedor", "gestor"],
-      lead_status: ["Novo", "Em Atendimento", "Ganho", "Perdido"],
+      lead_status: [
+        "Novo",
+        "Em Atendimento",
+        "Orçamento Enviado",
+        "Ganho",
+        "Perdido",
+      ],
     },
   },
 } as const

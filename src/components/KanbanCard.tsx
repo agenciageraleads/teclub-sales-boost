@@ -28,6 +28,7 @@ interface KanbanCardProps {
 const statusConfig: Record<LeadStatus, { label: string; class: string }> = {
   'Novo': { label: 'Novo', class: 'status-novo' },
   'Em Atendimento': { label: 'Em Atendimento', class: 'status-atendimento' },
+  'Orçamento Enviado': { label: 'Orçamento Enviado', class: 'status-orcamento' },
   'Ganho': { label: 'Ganho', class: 'status-ganho' },
   'Perdido': { label: 'Perdido', class: 'status-perdido' },
 };
@@ -35,6 +36,7 @@ const statusConfig: Record<LeadStatus, { label: string; class: string }> = {
 export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanCardProps) {
   const [orcamentoOpen, setOrcamentoOpen] = useState(false);
   const [motivoOpen, setMotivoOpen] = useState(false);
+  const [desqualificarMotivoOpen, setDesqualificarMotivoOpen] = useState(false);
   const [ganhoModalOpen, setGanhoModalOpen] = useState(false);
   const [templates, setTemplates] = useState<FollowupTemplate[]>([]);
 
@@ -54,14 +56,14 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
   const handleEnviarOrcamento = async (valor: number) => {
     const { error } = await supabase
       .from('leads')
-      .update({ valor_fechamento: valor, status: 'Em Atendimento' as LeadStatus })
+      .update({ valor_fechamento: valor, status: 'Orçamento Enviado' as LeadStatus })
       .eq('id', lead.id);
 
     if (error) {
       toast.error('Erro ao enviar orçamento');
       return;
     }
-    toast.success('Orçamento enviado! Lead movido para Em Atendimento');
+    toast.success('Orçamento enviado! Lead movido para Orçamento Enviado');
     onUpdate();
   };
 
@@ -93,10 +95,10 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
     onUpdate();
   };
 
-  const handleDesqualificar = async () => {
+  const handleDesqualificar = async (motivo: string) => {
     const { error } = await supabase
       .from('leads')
-      .update({ status: 'Perdido' as LeadStatus, motivo_perda: 'Desqualificado' })
+      .update({ status: 'Perdido' as LeadStatus, motivo_perda: motivo })
       .eq('id', lead.id);
 
     if (error) {
@@ -107,6 +109,10 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
     onUpdate();
   };
 
+  const handleWhatsApp = () => {
+    const phone = lead.contato.replace(/\D/g, '');
+    window.open(`https://api.whatsapp.com/send?phone=55${phone}`, '_blank');
+  };
   const handleFollowUp = async (template?: FollowupTemplate) => {
     // Atualizar ultimo_contato
     await supabase
@@ -134,7 +140,9 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
 
   const isNovo = lead.status === 'Novo';
   const isEmAtendimento = lead.status === 'Em Atendimento';
+  const isOrcamentoEnviado = lead.status === 'Orçamento Enviado';
   const isFinalizado = lead.status === 'Ganho' || lead.status === 'Perdido';
+  const showActions = isEmAtendimento || isOrcamentoEnviado;
 
   return (
     <>
@@ -157,7 +165,19 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
               {lead.nome}
             </h3>
             <div className="flex items-center gap-1.5">
-              {isEmAtendimento && (
+              {/* WhatsApp em todas as etapas não finalizadas */}
+              {!isFinalizado && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-5 w-5 p-0 bg-green-500/10 border-green-500/30 text-green-600 hover:bg-green-500 hover:text-white hover:border-green-500"
+                  onClick={handleWhatsApp}
+                  title="Abrir WhatsApp"
+                >
+                  <Phone className="w-3 h-3" />
+                </Button>
+              )}
+              {showActions && (
                 <>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -263,7 +283,8 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
                 size="sm"
                 variant="outline"
                 className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                onClick={handleDesqualificar}
+                onClick={() => setDesqualificarMotivoOpen(true)}
+                title="Desqualificar Lead"
               >
                 <Ban className="w-3 h-3" />
               </Button>
@@ -297,6 +318,13 @@ export function KanbanCard({ lead, onUpdate, onDragStart, onLeadClick }: KanbanC
         open={motivoOpen}
         onOpenChange={setMotivoOpen}
         onConfirm={handlePerdido}
+      />
+
+      <MotivoModal
+        open={desqualificarMotivoOpen}
+        onOpenChange={setDesqualificarMotivoOpen}
+        onConfirm={handleDesqualificar}
+        title="Motivo da Desqualificação"
       />
     </>
   );

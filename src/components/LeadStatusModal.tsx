@@ -29,7 +29,7 @@ interface LeadStatusModalProps {
   onSuccess: () => void;
 }
 
-const statusOptions: LeadStatus[] = ['Novo', 'Em Atendimento', 'Ganho', 'Perdido'];
+const statusOptions: LeadStatus[] = ['Novo', 'Em Atendimento', 'Orçamento Enviado', 'Ganho', 'Perdido'];
 
 export function LeadStatusModal({ lead, open, onOpenChange, onSuccess }: LeadStatusModalProps) {
   const [status, setStatus] = useState<LeadStatus>(lead?.status || 'Novo');
@@ -42,8 +42,8 @@ export function LeadStatusModal({ lead, open, onOpenChange, onSuccess }: LeadSta
     
     if (!lead) return;
 
-    if (status === 'Ganho' && !valorFechamento) {
-      toast.error('Valor do fechamento é obrigatório para leads ganhos');
+    if ((status === 'Ganho' || status === 'Orçamento Enviado') && !valorFechamento) {
+      toast.error('Valor do fechamento/orçamento é obrigatório');
       return;
     }
 
@@ -56,7 +56,7 @@ export function LeadStatusModal({ lead, open, onOpenChange, onSuccess }: LeadSta
 
     const updateData: Partial<Lead> = {
       status,
-      valor_fechamento: status === 'Ganho' ? parseFloat(valorFechamento) : null,
+      valor_fechamento: (status === 'Ganho' || status === 'Orçamento Enviado') ? parseFloat(valorFechamento) : lead.valor_fechamento,
       motivo_perda: status === 'Perdido' ? motivoPerda.trim() : null,
     };
 
@@ -114,9 +114,11 @@ export function LeadStatusModal({ lead, open, onOpenChange, onSuccess }: LeadSta
             </Select>
           </div>
 
-          {status === 'Ganho' && (
+          {(status === 'Ganho' || status === 'Orçamento Enviado') && (
             <div className="space-y-2 animate-fade-in">
-              <Label htmlFor="valor">Valor do Fechamento *</Label>
+              <Label htmlFor="valor">
+                {status === 'Orçamento Enviado' ? 'Valor do Orçamento *' : 'Valor do Fechamento *'}
+              </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                   R$
