@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { ImportLeadsModal } from '@/components/ImportLeadsModal';
-import { DateFilterToggle, DateFilter } from '@/components/DateFilterToggle';
 import { Lead, LeadStatus, Profile } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, Upload } from 'lucide-react';
+import { Search, Plus, Upload, Calendar } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -26,7 +25,9 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { startOfDay, subDays, startOfWeek, startOfMonth } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth } from 'date-fns';
+
+type DateFilter = 'all' | 'today' | 'week' | 'month' | '7days' | '30days';
 
 export default function LeadsManagement() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -142,16 +143,16 @@ export default function LeadsManagement() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Gestão de Leads</h1>
-            <p className="text-muted-foreground mt-1 text-base">
+            <p className="text-muted-foreground mt-1">
               {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setImportModalOpen(true)} className="gap-2 h-11">
+            <Button variant="outline" onClick={() => setImportModalOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" />
               Importar CSV
             </Button>
-            <Button onClick={() => setCreateModalOpen(true)} className="gap-2 h-11">
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
               <Plus className="w-4 h-4" />
               Novo Lead
             </Button>
@@ -159,34 +160,43 @@ export default function LeadsManagement() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                placeholder="🔍 Buscar por nome ou contato..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-11 text-base"
-              />
-            </div>
-            <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
-              <SelectTrigger className="w-full sm:w-56 h-11">
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os vendedores</SelectItem>
-                {vendedores.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.full_name || v.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou contato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
           </div>
-          
-          {/* Date filter as toggle buttons */}
-          <DateFilterToggle value={dateFilter} onChange={setDateFilter} />
+          <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Vendedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {vendedores.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.full_name || v.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+            <SelectTrigger className="w-full sm:w-40">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os períodos</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="week">Esta semana</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="7days">Últimos 7 dias</SelectItem>
+              <SelectItem value="30days">Últimos 30 dias</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Kanban Board */}
@@ -205,21 +215,21 @@ export default function LeadsManagement() {
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl">Novo Lead</DialogTitle>
+            <DialogTitle>Novo Lead</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateLead} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="nome" className="text-base">Nome</Label>
-              <Input id="nome" name="nome" placeholder="Nome do lead" required className="h-11" />
+              <Label htmlFor="nome">Nome</Label>
+              <Input id="nome" name="nome" placeholder="Nome do lead" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contato" className="text-base">Contato</Label>
-              <Input id="contato" name="contato" placeholder="Telefone ou email" required className="h-11" />
+              <Label htmlFor="contato">Contato</Label>
+              <Input id="contato" name="contato" placeholder="Telefone ou email" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="vendedor" className="text-base">Vendedor Responsável</Label>
+              <Label htmlFor="vendedor">Vendedor Responsável</Label>
               <Select name="vendedor" required>
-                <SelectTrigger className="h-11">
+                <SelectTrigger>
                   <SelectValue placeholder="Selecione um vendedor" />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,10 +242,10 @@ export default function LeadsManagement() {
               </Select>
             </div>
             <DialogFooter className="gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)} className="h-11">
+              <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={creating} className="h-11">
+              <Button type="submit" disabled={creating}>
                 {creating && <Loader2 className="w-4 h-4 animate-spin" />}
                 Criar Lead
               </Button>
