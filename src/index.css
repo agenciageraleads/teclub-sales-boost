@@ -37,6 +37,7 @@
     /* Status Colors */
     --status-novo: 210 100% 50%;
     --status-atendimento: 45 100% 50%;
+    --status-orcamento: 280 70% 55%;
     --status-ganho: 145 65% 42%;
     --status-perdido: 0 72% 51%;
 
@@ -145,6 +146,10 @@
 
   .status-ganho {
     @apply bg-emerald-500/10 text-emerald-600 border-emerald-500/20;
+  }
+
+  .status-orcamento {
+    @apply bg-purple-500/10 text-purple-600 border-purple-500/20;
   }
 
   .status-perdido {

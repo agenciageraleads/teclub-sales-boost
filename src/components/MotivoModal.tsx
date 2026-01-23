@@ -15,9 +15,10 @@ interface MotivoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (motivo: string) => Promise<void>;
+  title?: string;
 }
 
-export function MotivoModal({ open, onOpenChange, onConfirm }: MotivoModalProps) {
+export function MotivoModal({ open, onOpenChange, onConfirm, title = "Motivo da Perda" }: MotivoModalProps) {
   const [motivo, setMotivo] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +39,7 @@ export function MotivoModal({ open, onOpenChange, onConfirm }: MotivoModalProps)
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <XCircle className="w-5 h-5" />
-            Motivo da Perda
+            {title}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
