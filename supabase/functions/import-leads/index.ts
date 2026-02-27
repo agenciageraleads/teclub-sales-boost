@@ -227,12 +227,51 @@ serve(async (req) => {
         motivo_perda: lead.motivo_perda || null,
       }));
 
-      console.log('Inserting leads:', JSON.stringify(leadsToInsert));
+      // Deduplicate within the incoming batch
+      const seen = new Set<string>();
+      const uniqueLeads = leadsToInsert.filter(lead => {
+        const key = `${lead.nome.toLowerCase()}|${lead.contato.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
-      // Insert leads
+      // Check against existing leads in DB
+      const { data: existing } = await supabase
+        .from('leads')
+        .select('nome, contato');
+
+      const existingKeys = new Set(
+        (existing || []).map(l => `${l.nome.trim().toLowerCase()}|${l.contato.trim().toLowerCase()}`)
+      );
+
+      const newLeads = uniqueLeads.filter(lead => {
+        const key = `${lead.nome.toLowerCase()}|${lead.contato.toLowerCase()}`;
+        return !existingKeys.has(key);
+      });
+
+      const duplicatesSkipped = leadsToInsert.length - newLeads.length;
+
+      if (newLeads.length === 0) {
+        console.log(`All ${leadsToInsert.length} leads are duplicates, skipping.`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'All leads already exist, none imported.',
+            inserted: 0,
+            duplicates_skipped: duplicatesSkipped,
+            leads: [] 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Inserting ${newLeads.length} leads (${duplicatesSkipped} duplicates skipped)`);
+
+      // Insert only new leads
       const { data, error } = await supabase
         .from('leads')
-        .insert(leadsToInsert)
+        .insert(newLeads)
         .select();
 
       if (error) {
@@ -248,7 +287,9 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `${data?.length} lead(s) imported successfully`,
+          message: `${data?.length} lead(s) imported, ${duplicatesSkipped} duplicate(s) skipped`,
+          inserted: data?.length,
+          duplicates_skipped: duplicatesSkipped,
           leads: data 
         }),
         { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
