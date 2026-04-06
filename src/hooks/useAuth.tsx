@@ -18,12 +18,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_TIMEOUT_MS = 8000;
 const ROLE_TIMEOUT_MS = 5000;
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
   let timeoutId: number | undefined;
 
   try {
     return await Promise.race([
-      promise,
+      Promise.resolve(promise),
       new Promise<T>((_, reject) => {
         timeoutId = window.setTimeout(() => {
           reject(new Error(`${label} timed out`));
