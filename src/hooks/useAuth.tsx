@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { AppRole } from '@/types/database';
@@ -15,58 +15,131 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_TIMEOUT_MS = 8000;
+const ROLE_TIMEOUT_MS = 5000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutId: number | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          reject(new Error(`${label} timed out`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   const fetchUserRole = async (userId: string): Promise<AppRole | null> => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
-    
-    const userRole = data?.role as AppRole | null;
-    setRole(userRole);
-    return userRole;
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        ROLE_TIMEOUT_MS,
+        'fetchUserRole'
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      const userRole = data?.role as AppRole | null;
+
+      if (mountedRef.current) {
+        setRole(userRole);
+      }
+
+      return userRole;
+    } catch (error) {
+      console.error('Erro ao buscar role do usuário:', error);
+
+      if (mountedRef.current) {
+        setRole(null);
+      }
+
+      return null;
+    }
   };
 
   useEffect(() => {
-    // Get initial session first
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserRole(session.user.id);
-      }
-      setLoading(false);
-    });
+    mountedRef.current = true;
 
-    // Listen for auth changes - DO NOT await inside this callback
-    // as it can cause deadlocks and block subsequent auth events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fire and forget - use setTimeout to avoid blocking the callback
-          setTimeout(() => {
-            fetchUserRole(session.user.id).then(() => {
-              setLoading(false);
-            });
-          }, 0);
-        } else {
+    const applySession = async (nextSession: Session | null) => {
+      if (!mountedRef.current) return;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await fetchUserRole(nextSession.user.id);
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const bootstrapAuth = async () => {
+      setLoading(true);
+
+      try {
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_TIMEOUT_MS,
+          'getSession'
+        );
+
+        await applySession(session);
+      } catch (error) {
+        console.error('Erro ao restaurar sessão:', error);
+
+        if (mountedRef.current) {
+          setSession(null);
+          setUser(null);
           setRole(null);
           setLoading(false);
         }
       }
+    };
+
+    void bootstrapAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (!mountedRef.current) return;
+
+        setLoading(true);
+        void applySession(nextSession);
+      }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
